@@ -1,6 +1,6 @@
 // code to be devoloed for the modular synthesizer based on Pd, Teensy 3.1 and Odroid
-// check the following link for possible more effective SPI use of the Teesny
-// http://dorkbotpdx.org/blog/paul/display_spi_optimization
+// goes with modular4 or modular5 Pd patch
+// written by Alexandros Drymonitis
 
 #include <SPI.h>
 #include "pin_states.h"
@@ -22,28 +22,29 @@
 
 // set global variables for output shift registers
 const byte output_latch = 10;
-// array to hold number of pins used of each output chip
-byte output_pins[NUM_OF_MODULES] = {6, 3, 2};
-// array to hold the position of the first LED on each module
-// if an LED is controlled over serial, exclude it
-byte led_pos[NUM_OF_MODULES] = {6, 3, 3};
 // byte array to transfer data to output chips via SPI
 byte output_data[NUM_OF_MODULES] = { 0 };
-// boolean to exit the output pins loop when a new connections has been detected
+// array to hold number of pins used of each output chip
+byte output_pins[NUM_OF_MODULES] = {6, 3, 3};
+// array to hold the position of the first LED of each module
+// if an LED is controlled over serial, exclude it
+byte led_pos[NUM_OF_MODULES] = {6, 3, 4};
+// boolean to exit the output pins loop when a new connection has been detected
 boolean terminate;
 
 // set global variables for input shift registers
 const byte input_latch = 9;
 // array to receive data from input chips via SPI
 byte input_data[NUM_OF_MODULES];
-// array to hold switch positions of each module, starting from 0
+// array to hold position of first switch of each module, starting from 0
+// exclude switches that don't control LEDs
 byte switch_pos[NUM_OF_MODULES] = {1, 1, 3};
 // array to hold number of switches on each module
-// if an LED is controlled over serial and not from a switch, exclude it
+// exclude switches that don't control LEDs
 byte num_of_switches[NUM_OF_MODULES] = {1, 2, 1};
 // two-dimensional array to hold states of banana plugs
 // row number = sum of elements of outputPins, column number = NUM_OF_MODULES
-byte banana_states[11][NUM_OF_MODULES];
+byte banana_states[12][NUM_OF_MODULES];
 // array to store state of switches
 byte switch_states[NUM_OF_MODULES];
 
@@ -56,9 +57,9 @@ const byte num_of_master_mux = 1;
 // number of slave multiplexers
 int num_of_slave_mux[num_of_master_mux] = {3};
 // two dimensional array to hold number of pins used of each slave multiplexer
-// rows = numOfMasterMux, columns = greatest number in numOfSlaveMux array
+// rows = num_of_master_mux, columns = greatest number in num_of_slave_mux array
 int num_of_pots[num_of_master_mux][3] = { { 7, 4, 1 } };
-const int total_pots = 12; // sum of elements of numOfPots
+const int total_pots = 12; // sum of elements of num_of_pots
 // array to store multiple readings of each knob for smoothing
 unsigned int multiple_pots[total_pots][SMOOTH];
 // array to hold raw analog readings to be sent to the smooth() function
@@ -66,14 +67,14 @@ unsigned int raw[SMOOTH];
 
 // indices for banana plugs and switches functions
 int banana_index = (total_pots * 2) + 1;
-int switch_index = banana_index + 5;
+int switch_index = banana_index + 4;
 
 // number of bytes to be transfered to Pure Data over serial
 // this number is totalPots * 2
-// plus five for the banana plugs function
+// plus four for the banana plugs function
 // plus three for the switches function
 // plus one (for denoting the beginning of data)
-const byte num_of_transfer_data = 33;
+const byte num_of_transfer_data = 32;
 // buffer to hold data transfered to Pure Data over serial
 byte transfer_data[num_of_transfer_data];
 
@@ -96,7 +97,7 @@ void refresh_input()
 }
 
 // function to check if any connection has changed
-void check_connections(int chip, int pin)
+void check_connections(int pin)
 {
   int index = banana_index;
   // store the first altered state of input bytes to the transfer array
@@ -104,11 +105,10 @@ void check_connections(int chip, int pin)
     // mask the input byte to exclude any possible switches on the module and check if changed
     byte masked_banana = input_data[i] & banana_pins[i];
     if(masked_banana != banana_states[pin][i]){
-      // store input byte, pin, output and input chip # to the transfer array
+      // store input byte, output pin and input chip # to the transfer array
       transfer_data[index++] = input_data[i] & 0x7f;
       transfer_data[index++] = input_data[i] >> 7;
-      transfer_data[index++] = pin + 1; // + 1 cause it sets the outlet of [mtx_*~]
-      transfer_data[index++] = chip;
+      transfer_data[index++] = pin;
       transfer_data[index] = i;
       // update the banana_states array
       banana_states[pin][i] = masked_banana;
@@ -119,7 +119,7 @@ void check_connections(int chip, int pin)
   }
 }
 
-// functin to check if the state of any switch has changed
+// function to check if the state of any switch has changed
 void check_switches()
 {
   int index = switch_index;
@@ -131,7 +131,7 @@ void check_switches()
       transfer_data[index++] = input_data[i] & 0x7f;
       transfer_data[index++] = input_data[i] >> 7;
       transfer_data[index] = i;
-      // update the switch_state array and exit loop
+      // update the switch_states array and exit loop
       switch_states[i] = masked_switch;
       break;
     }
@@ -149,13 +149,15 @@ void setup()
   digitalWrite(output_latch, HIGH);
   
   // initialize output chips with all banana plug pins high
-  // and LED pins low and call the output shift register function
-  for(int i = 0; i < NUM_OF_MODULES; i++)
-    output_data[i] = banana_pins[i];
+  // and LED pins low and call the output shift registers function
+  for(int i = 0; i < NUM_OF_MODULES; i++){
+    for(int j = 0; j < output_pins[i]; j++)
+      bitSet(output_data[i], j);
+  }
   refresh_output();
   
-  //initialize the banana plugs states two-dimensional array
-  for(int i = 0; i < 11; i++){
+  //initialize the banana sockets states two-dimensional array
+  for(int i = 0; i < 12; i++){
     for(int j = 0; j < NUM_OF_MODULES; j++)
       banana_states[i][j] = banana_pins[j];
   }
@@ -164,9 +166,9 @@ void setup()
   for(int i = 0; i < NUM_OF_MODULES; i++)
     switch_states[i] = switch_pins[i];
     
-  // initialize the last eight bytes of the transfer array to 255
+  // initialize the last seven bytes of the transfer array to 255
   int index = banana_index;
-  for(int i = 0; i < 9; i++)
+  for(int i = 0; i < 7; i++)
     transfer_data[index++] = 0xff;
   
   // initialize Arduino's control pins for multiplexers
@@ -189,8 +191,7 @@ void loop()
   // store DSP state input from Pd
   if(Serial.available()){
     DSPstate = Serial.read() - '0';
-    if(DSPstate) bitSet(output_data[2], 2);
-    else bitClear(output_data[2], 2);
+    bitWrite(output_data[2], 3, DSPstate);
   }
       
   // run through the multiplexers first, five times to get multiple values to smooth them
@@ -231,12 +232,11 @@ void loop()
   // set all LEDs according to switches
   for(int i = 0; i < NUM_OF_MODULES; i++){  
     int pos_switch = switch_pos[i];
-    int posLED = led_pos[i];
+    int pos_led = led_pos[i];
     // read the switches of the current chip and set LEDs accordingly
     for(int j = 0; j < num_of_switches[i]; j++){
       int switch_state = bitRead(input_data[i], pos_switch++);
-      if(switch_state) bitClear(output_data[i], posLED++);
-      else bitSet(output_data[i], posLED++);
+      bitWrite(output_data[i], pos_led++, !switch_state);
     }
   }
   
@@ -265,7 +265,7 @@ void loop()
       // add current and previous pins of current chip
       local_pin += j;
       // check if there's a new connection
-      check_connections(i, local_pin);
+      check_connections(local_pin);
       // reset the pin HIGH
       bitSet(output_data[i], bit_increment);
       // check if a new connection has been detected and if so, exit loop
