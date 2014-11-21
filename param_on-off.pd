@@ -1,13 +1,13 @@
-#N canvas 601 272 450 300 10;
+#N canvas 598 270 500 305 10;
 #X text 53 41 number is outlet number;
 #X obj 54 108 swap;
 #X obj 54 130 pack;
 #X obj 54 213 f;
 #X obj 54 152 route 1 0;
-#X text 77 200 when the patching update is deactivated \, store value
+#X text 85 202 when the patching update is deactivated \, store value
 and output it when it is reactivated;
 #X obj 54 235 outlet;
-#X obj 75 84 inlet update;
+#X obj 79 84 inlet update;
 #X obj 31 180 inlet reactivate;
 #X obj 54 58 r param\$1;
 #X connect 1 0 2 0;
