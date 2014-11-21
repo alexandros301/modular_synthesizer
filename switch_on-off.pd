@@ -1,19 +1,19 @@
-#N canvas 160 135 504 479 10;
+#N canvas 154 131 578 522 10;
 #X obj 56 267 sel 0;
 #X obj 56 328 del 20;
 #X obj 56 398 0;
 #X obj 56 61 change;
-#N canvas 511 121 438 289 accumulate-connection-states 0;
+#N canvas 508 119 556 302 accumulate-connection-states 0;
 #X obj 37 104 +;
 #X obj 67 105 f;
 #X obj 37 59 * 2;
 #X obj 37 81 - 1;
 #X obj 37 149 moses -1;
-#X obj 82 171 > 0;
+#X obj 90 171 > 0;
 #X msg 37 171 0;
 #X obj 37 193 t f f;
-#X obj 82 210 outlet;
-#X text 62 62 map 0 - 1 to (-1) - 1 so that a 1 will add one and a
+#X obj 90 210 outlet;
+#X text 65 62 map 0 - 1 to (-1) - 1 so that a 1 will add one and a
 0 will subtract one from the states accumulation;
 #X obj 37 36 inlet switch_state;
 #X obj 37 126 f;
@@ -31,7 +31,7 @@
 #X connect 10 0 2 0;
 #X connect 11 0 4 0;
 #X restore 56 39 pd accumulate-connection-states;
-#X text 110 17 inlet number;
+#X text 119 17 inlet number;
 #X obj 56 109 swap;
 #X obj 56 131 pack;
 #X obj 56 153 route 1 0;
@@ -40,13 +40,13 @@
 #X text 85 207 when the patching update is deactivated \, store value
 and output it when it is reactivated;
 #X obj 56 16 r node\$1;
-#X obj 77 81 inlet update;
+#X obj 81 83 inlet update;
 #X obj 14 176 inlet reactivate;
 #X obj 56 242 t f f f;
-#X obj 83 290 spigot;
+#X obj 88 290 spigot;
 #X obj 56 374 spigot;
-#X obj 89 352 == 0;
-#X text 97 372 if a sequence of ones and zeros enter this abstraction
+#X obj 95 352 == 0;
+#X text 106 374 if a sequence of ones and zeros enter this abstraction
 \, even if the last number is one \, [del] will output a zero 20 ms
 after the last one \, thus causing [switch~] to turn the subpatch off.
 using a [spigot] after [del] will prevent this;
