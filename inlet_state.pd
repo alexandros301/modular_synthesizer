@@ -1,0 +1,20 @@
+#N canvas 595 268 500 305 10;
+#X obj 54 108 swap;
+#X obj 54 130 pack;
+#X obj 54 213 f;
+#X obj 54 152 route 1 0;
+#X text 85 202 when the patching update is deactivated \, store value
+and output it when it is reactivated;
+#X obj 54 235 outlet;
+#X obj 219 91 inlet update;
+#X obj 127 152 inlet reactivate;
+#X obj 54 86 inlet state;
+#X connect 0 0 1 0;
+#X connect 0 1 1 1;
+#X connect 1 0 3 0;
+#X connect 2 0 5 0;
+#X connect 3 0 2 0;
+#X connect 3 1 2 1;
+#X connect 6 0 0 1;
+#X connect 7 0 2 0;
+#X connect 8 0 0 0;
