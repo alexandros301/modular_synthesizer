@@ -13,6 +13,9 @@ called 'modules', and there place adc_dac~.pd, pow_sine~.pd, var_shapes~.pd and 
 abstractions are being called by the main patch, and their relative paths are being used in the declare object
 (template_module~.pd is not being called, it's just there for people to understand how they should program their
 modules).
+debounce_float.pd and loop.pd are general purpose abstractions I use and placed them in a directory specified in Pd's
+search path. It's up to you how you'll manage this (debounce_float.pd needs to be revised, it doesn't really work as
+expected).
 
 In this specific demo patch, two external objects I wrote are being used, [powSine~] and [varShapesOsc~]. You can get
 them from here http://drymonitis.me/code/ (there are binaries for Linux and OS X, source code, Makefile and help
