@@ -10,7 +10,7 @@ source project, but it's still far from complete. Still, you're free to experime
 In the directory of this project create a directory with the name 'generic_abstractions' and place there the patches
 inlet_state.pd, set_inputs.pd, set_outputs.pd and switch_state.pd, and another directory (in the parent directory),
 called 'modules', and there place adc_dac~.pd, pow_sine~.pd, var_shapes~.pd and template_module~.pd, cause all these
-abstractions are being called by the main patch, and their relative paths are being used in [ declare ]
+abstractions are being called by the main patch, and their relative paths are being used in the declare object
 (template_module~.pd is not being called, it's just there for people to understand how they should program their
 modules).
 
