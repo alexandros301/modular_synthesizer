@@ -1,11 +1,10 @@
 // code to be devoloed for the modular synthesizer based on Pd, Teensy 3.1 and Odroid
-// goes with modular5 Pd patch
 // written by Alexandros Drymonitis
 
 #include <SPI.h>
 #include "pin_states.h"
 
-// global variables
+// set macros
 
 #define MASTER_CONTROL0 5
 #define MASTER_CONTROL1 4
@@ -18,10 +17,13 @@
 
 #define NUM_OF_MODULES 3
 
-#define SMOOTH 3
+#define SMOOTH 20
+
+// global variables with pointers
 
 // set global variables for output shift registers
 const byte output_latch = 10;
+//const byte *output_latch_pointer = &output_latch;
 // byte array to transfer data to output chips via SPI
 byte output_data[NUM_OF_MODULES] = { 0 };
 // array to hold number of banana pins used of each output chip
@@ -31,9 +33,11 @@ byte output_pins[NUM_OF_MODULES] = {6, 3, 3};
 byte led_pos[NUM_OF_MODULES] = {6, 3, 4};
 // boolean to exit the output pins loop when a new connection has been detected
 boolean terminate;
+//boolean *terminate_pointer = &terminate;
 
 // set global variables for input shift registers
 const byte input_latch = 9;
+//const byte *input_latch_pointer = &input_latch;
 // array to receive data from input chips via SPI
 byte input_data[NUM_OF_MODULES];
 // array to hold position of first switch of each module, starting from 0
@@ -50,6 +54,7 @@ byte switch_states[NUM_OF_MODULES];
 
 // variable to hold the DSP state to control the DSP LED
 byte DSPstate = 0;
+//byte *DSPstate_pointer = &DSPstate;
 
 // set global variables for multiplexers
 // master multiplexers controlling the multiplexers of each module
@@ -62,39 +67,28 @@ int num_of_pots[num_of_master_mux][3] = { { 7, 4, 1 } };
 const int total_pots = 12; // sum of elements of num_of_pots
 // array to store multiple readings of each knob for smoothing
 unsigned int multiple_pots[total_pots][SMOOTH];
-// last element index of each row of the two dimensional array
-// just so that you don't need to subtract one from SMOOTH in each loop
-int last_col = SMOOTH - 1;
+// array to sum up reading for smoothing
+unsigned long sums[total_pots];
+// column variable to control multiple_pots
+static byte tail;
 
-// indices for banana plugs and switches functions
-int banana_index = (total_pots * 2) + 1;
-int switch_index = banana_index + 4;
+// indices for switches function and potentiometers
+int switch_index = 5;
+//int *switch_index_pointer = &switch_index;
+int pot_index = switch_index + 3;
+//int *pot_index_pointer = &pot_index;
 
 // number of bytes to be transfered to Pure Data over serial
 // this number is totalPots * 2
 // plus four for the banana plugs function
 // plus three for the switches function
 // plus one (for denoting the beginning of data)
-const byte num_of_transfer_data = 32;
+const byte num_of_transfer_data = (total_pots * 2) + 8;
 // buffer to hold data transfered to Pure Data over serial
 byte transfer_data[num_of_transfer_data];
 
 
 // Custom functions
-
-// analog readings smoothing function
-unsigned int smooth(int row_index)
-{
-  unsigned int smoothed;
-  unsigned long accumulate;
-  // accumulate analog readings
-  for(int i = 0; i < SMOOTH; i++)
-    accumulate += multiple_pots[row_index][i];
-  // divide readings sum by the number of stored values  
-  smoothed = accumulate / SMOOTH;
-  
-  return smoothed;
-}
 
 // function to transfer data to the output shift registers via SPI
 void refresh_output()
@@ -117,7 +111,7 @@ void refresh_input()
 // function to check if any connection has changed
 void check_connections(int pin)
 {
-  int index = banana_index;
+  int index = 1;
   // store the first altered state of input bytes to the transfer array
   for(int i = 0; i < NUM_OF_MODULES; i++){
     // mask the input byte to exclude any possible switches on the module and check if changed
@@ -187,16 +181,8 @@ void setup()
   for(int i = 0; i < NUM_OF_MODULES; i++)
     switch_states[i] = switch_pins[i];
     
-  // initialize the last seven bytes of the transfer array to 255
-  int index = banana_index;
   for(int i = 0; i < 7; i++)
-    transfer_data[index++] = 0xff;
-    
-  // initialize the multiple_pots array with zeros
-  for(int i = 0; i < total_pots; i++){
-    for(int j = 0; j < SMOOTH; j++)
-      multiple_pots[i][j] = 0;
-  }
+    transfer_data[i] = 0xff;
   
   // initialize Arduino's control pins for multiplexers
   for(int i = 2; i < 9; i++){
@@ -213,41 +199,11 @@ void setup()
 void loop()
 {
   transfer_data[0] = 0xc0; // denote start of data stream
-  int index = 1; // transfer data array index offset
   
   // store DSP state input from Pd
   if(Serial.available()){
     DSPstate = Serial.read() - '0';
     bitWrite(output_data[2], 3, DSPstate);
-  }
-  
-  // read potentiometers
-  int row_index = 0;
-  // run througn all master multiplexers
-  for(int master_mux = 0; master_mux < num_of_master_mux; master_mux++){
-    // first move the elements of current row one position to the left so we can add the new value at the end
-    for(int i = 0; i < last_col; i++) multiple_pots[row_index][i] = multiple_pots[row_index][i + 1];
-    // run through all slave multiplexers
-    for(int slave_mux = 0; slave_mux < num_of_slave_mux[master_mux]; slave_mux++){
-      digitalWrite(MASTER_CONTROL0, (slave_mux&15)>>3);
-      digitalWrite(MASTER_CONTROL1, (slave_mux&7)>>2);
-      digitalWrite(MASTER_CONTROL2, (slave_mux&3)>>1);
-      digitalWrite(MASTER_CONTROL3, (slave_mux&1));
-      // run through the pins used on each slave multiplexer
-      for(int pot = 0; pot < num_of_pots[master_mux][slave_mux]; pot++){
-        digitalWrite(SLAVE_CONTROL0, (pot&7)>>2);
-        digitalWrite(SLAVE_CONTROL1, (pot&3)>>1);
-        digitalWrite(SLAVE_CONTROL2, (pot&1));
-        // store new reading to the last element of pots row
-        multiple_pots[row_index][last_col] = analogRead(master_mux);
-        // call the smoothing function
-        unsigned int smoothed = smooth(row_index);
-        // and store the smoothed value to the transfer_data array
-        transfer_data[index++] = smoothed & 0x007f;
-        transfer_data[index++] = smoothed >> 7;
-        row_index++;
-      }
-    }
   }
   
   // set all LEDs according to switches
@@ -300,6 +256,39 @@ void loop()
   
   // call the function that stores altered states of switches
   check_switches();
+  
+  int index = pot_index; // transfer data array index offset
+  // read potentiometers
+  int row_index = 0;
+  // run througn all master multiplexers
+  for(int master_mux = 0; master_mux < num_of_master_mux; master_mux++){
+    // first move the elements of current row one position to the left so we can add the new value at the end
+    //for(int i = 0; i < last_col; i++) multiple_pots[row_index][i] = multiple_pots[row_index][i + 1];
+    // run through all slave multiplexers
+    for(int slave_mux = 0; slave_mux < num_of_slave_mux[master_mux]; slave_mux++){
+      digitalWrite(MASTER_CONTROL0, (slave_mux&15)>>3);
+      digitalWrite(MASTER_CONTROL1, (slave_mux&7)>>2);
+      digitalWrite(MASTER_CONTROL2, (slave_mux&3)>>1);
+      digitalWrite(MASTER_CONTROL3, (slave_mux&1));
+      // run through the pins used on each slave multiplexer
+      for(int pot = 0; pot < num_of_pots[master_mux][slave_mux]; pot++){
+        digitalWrite(SLAVE_CONTROL0, (pot&7)>>2);
+        digitalWrite(SLAVE_CONTROL1, (pot&3)>>1);
+        digitalWrite(SLAVE_CONTROL2, (pot&1));
+        sums[row_index] -= multiple_pots[row_index][tail];
+        sums[row_index] += multiple_pots[row_index][tail] = analogRead(master_mux);
+        // call the smoothing function
+        unsigned int smoothed = sums[row_index] / SMOOTH;
+        // and store the smoothed value to the transfer_data array
+        transfer_data[index++] = smoothed & 0x007f;
+        transfer_data[index++] = (smoothed >> 7) & 0x003f;
+        row_index++;
+      }
+    }
+  }
+  tail++;
+  if(tail >= SMOOTH) tail = 0;
+  
   // write all data to the serial port
   Serial.write(transfer_data, num_of_transfer_data);
 }
