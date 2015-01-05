@@ -3,6 +3,11 @@ modular_synthesizer
 
 This is a work in progress. A modular synthesizer based on Pure Data, Teensy (programmed in the Arduino language) and Odroid.
 
+Updates:
+I've changed the Arduino sketch and the Pd patch and now only the active modules have their potentiometers read and transferred to Pd.
+This means that there is a different approach to patching modules in Pd. All module abstractions (pow_sine~.pd, adc_dac~.pd and var_shapes~.pd) have been updated in this repository, only template_module~.pd hasn't been updated yet, it will be in the near future. Some generic abstractions have changed slighty and they have also been updated.
+
+Notes:
 I've uploaded the code both for back-up and for people to fork it, if anyone wants. It is an open source project, but it's still far from complete. Still, you're free to experiment and develop it.
 
 In the directory of this project create a directory with the name 'generic_abstractions' and place there the patches inlet_state.pd, set_inputs.pd, set_outputs.pd and switch_state.pd, and another directory (in the parent directory), called 'modules', and there place adc_dac~.pd, pow_sine~.pd, var_shapes~.pd and template_module~.pd, cause all these abstractions are being called by the main patch, and their relative paths are being used in the declare object (template_module~.pd is not being called, it's just there for people to understand how they should program their modules).
