@@ -100,7 +100,6 @@ void refresh_input()
     input_data[i] = SPI.transfer(0);
 }
 
-// function to check if any connection has changed
 void check_connections(int pin, int module)
 {
   int local_index = ndx;
@@ -144,7 +143,6 @@ void check_connections(int pin, int module)
   }
 }
 
-// function to check if the state of any switch has changed
 void check_switches()
 {
   int local_index = ndx;
@@ -170,6 +168,20 @@ void check_switches()
   }
 }
 
+void init_connections()
+{
+  for(int i = 0; i < 13; i++){
+    for(int j = 0; j < NUM_OF_MODULES; j++)
+      banana_states[i][j] = banana_pins[j];
+  }
+}
+
+void init_switches()
+{
+  for(int i = 0; i < NUM_OF_MODULES; i++)
+    switch_states[i] = switch_pins[i];
+}
+
 
 // Built-in functions
 
@@ -192,14 +204,10 @@ void setup()
   refresh_output();
   
   //initialize the banana sockets states two-dimensional array
-  for(int i = 0; i < 13; i++){
-    for(int j = 0; j < NUM_OF_MODULES; j++)
-      banana_states[i][j] = banana_pins[j];
-  }
+  init_connections();
   
   // initialize the switch states array
-  for(int i = 0; i < NUM_OF_MODULES; i++)
-    switch_states[i] = switch_pins[i];
+  init_switches();
   
   // initialize Arduino's control pins for multiplexers
   for(int i = 2; i < 9; i++){
@@ -221,12 +229,17 @@ void loop()
   // store DSP state input from Pd
   if(Serial.available()){
     byte inByte = Serial.read();
-    if((inByte >= '0') && (inByte <= '9'))
-      serial_value = inByte - '0';
+    if((inByte >= '0') && (inByte <= '9')) serial_value = inByte - '0';
     else{
-      if(inByte == 'd') DSPstate = serial_value;
+      if(inByte == 'd'){
+        DSPstate = serial_value;
+        bitWrite(output_data[dac_module], 3, DSPstate);
+      }
+      else if(inByte == 'i'){
+        init_connections();
+        init_switches();
+      }
     }
-    bitWrite(output_data[dac_module], 3, DSPstate);
   }
   
   // set all LEDs according to switches
