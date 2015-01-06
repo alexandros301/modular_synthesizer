@@ -1,7 +1,6 @@
-#N canvas 147 79 920 678 10;
+#N canvas 144 77 920 678 10;
 #X declare -path ../generic_abstractions;
 #X obj 582 21 declare -path ../generic_abstractions;
-#X obj 49 112 inlet;
 #N canvas 0 51 395 296 scale-offset1 0;
 #X obj 159 95 pack f 20;
 #X obj 159 117 line~;
@@ -66,9 +65,9 @@ and output it when it is reactivated;
 #X connect 9 0 10 0;
 #X connect 11 0 12 0;
 #X connect 12 0 6 0;
-#X restore 49 519 pd scale-offset1;
-#X obj 49 541 throw~;
-#X obj 150 497 throw~;
+#X restore 49 459 pd scale-offset1;
+#X obj 49 481 throw~;
+#X obj 150 437 throw~;
 #N canvas 0 51 645 372 scale-offset2 0;
 #X obj 159 125 pack f 20;
 #X obj 159 147 line~;
@@ -144,9 +143,9 @@ any of them;
 #X connect 9 0 10 0;
 #X connect 11 0 12 0;
 #X connect 12 0 6 0;
-#X restore 150 475 pd scale-offset2;
-#X obj 303 360 set_outputs \$3 \$4;
-#N canvas 103 113 1096 489 set_inputs_and_connection_states 0;
+#X restore 150 415 pd scale-offset2;
+#X obj 303 300 set_outputs \$3 \$4;
+#N canvas 100 111 1096 489 set_inputs_and_connection_states 0;
 #X obj 27 172 s \$0-1st_input;
 #X obj 57 152 s \$0-2nd_input;
 #X obj 27 266 r inlet_states;
@@ -223,9 +222,8 @@ states;
 #X connect 2 0 1 0;
 #X connect 3 0 1 1;
 #X connect 4 0 1 2;
-#X restore 421 605 pd set_switch;
-#X obj 421 627 switch~;
-#X obj 89 164 outlet;
+#X restore 421 545 pd set_switch;
+#X obj 421 567 switch~;
 #N canvas 192 249 741 408 stuff1 0;
 #X obj 51 319 *~;
 #X obj 209 281 pack f 20;
@@ -271,7 +269,7 @@ comes from an outlet of [mtx_*~] \, expressed in 0s and 1s;
 #X connect 13 0 12 0;
 #X connect 14 0 15 0;
 #X connect 15 0 1 0;
-#X restore 49 286 pd stuff1;
+#X restore 49 226 pd stuff1;
 #N canvas 120 224 672 457 stuff2 0;
 #X obj 97 305 *~;
 #X obj 254 312 pack f 20;
@@ -320,7 +318,7 @@ it around 0.5 and use the knob control its amplitude around that value
 #X connect 16 0 15 0;
 #X connect 17 0 11 0;
 #X connect 18 0 0 0;
-#X restore 151 286 pd stuff2;
+#X restore 151 226 pd stuff2;
 #N canvas 117 65 792 230 main_process 0;
 #X obj 43 63 inlet~;
 #X obj 116 63 inlet~;
@@ -331,23 +329,17 @@ it around 0.5 and use the knob control its amplitude around that value
 filter \, an effect \, a control signal etc.;
 #X connect 0 0 2 0;
 #X connect 1 0 3 0;
-#X restore 49 310 pd main_process;
-#X obj 303 382 route 0 1;
-#X text 306 256 here we receive the values of the switches of the module
+#X restore 49 250 pd main_process;
+#X obj 303 322 route 0 1;
+#X text 306 196 here we receive the values of the switches of the module
 ;
 #X text 180 19 declare the path to the generic abstractions as they
 are used in all module abstractions;
 #X text 455 66 open this patch ->;
-#X text 282 606 open this patch ->;
-#X text 480 628 if this abstraction is not connected to anything in
+#X text 282 546 open this patch ->;
+#X text 480 568 if this abstraction is not connected to anything in
 the matrix \, turn its DSP off \, to save some CPU;
-#X obj 49 134 list split 4;
-#X text 140 162 the rest of the knobs data go out through here \, so
-we can chain all abstractions for easier and clearer patching;
-#X text 142 125 argument is number of module's knobs * 2 (this template
-module has two);
-#N canvas 247 88 657 353 assemble_and_scale_values 0;
-#X obj 33 123 inlet;
+#N canvas 241 84 657 353 assemble_and_scale_values 0;
 #X obj 33 145 unpack f f f f;
 #X obj 33 190 +;
 #X obj 64 168 * 128;
@@ -362,51 +354,52 @@ necessary scaling;
 #X text 192 160 in this example \, the first value is being output
 intact (say it's a frequency value) \, while the second has been scaled
 to a range between 0 and 1;
+#X obj 33 123 r module\$1;
+#X text 109 111 this [receive] will gets its name according to the
+abstraction's first argument which is the module's index;
 #X connect 0 0 1 0;
-#X connect 1 0 2 0;
-#X connect 1 1 3 0;
-#X connect 1 2 4 0;
-#X connect 1 3 5 0;
-#X connect 2 0 6 0;
-#X connect 3 0 2 1;
-#X connect 4 0 7 0;
-#X connect 5 0 4 1;
-#X connect 7 0 8 0;
-#X restore 49 194 pd assemble_and_scale_values;
-#X obj 229 257 r switches;
-#X obj 229 279 route \$1;
-#X obj 229 314 route 2 3;
-#X text 294 274 we use the first argument (the module's index) to route
+#X connect 0 1 2 0;
+#X connect 0 2 3 0;
+#X connect 0 3 4 0;
+#X connect 1 0 5 0;
+#X connect 2 0 1 1;
+#X connect 3 0 6 0;
+#X connect 4 0 3 1;
+#X connect 6 0 7 0;
+#X connect 10 0 0 0;
+#X restore 49 134 pd assemble_and_scale_values;
+#X obj 229 197 r switches;
+#X obj 229 219 route \$1;
+#X obj 229 254 route 2 3;
+#X text 294 214 we use the first argument (the module's index) to route
 only this module's switch values into this patch;
-#X text 302 312 these arguments are the pin numbers the switches are
+#X text 302 252 these arguments are the pin numbers the switches are
 wired to \, starting from 0;
-#X text 431 355 [set_outputs] sets correct names to every [throw~]
+#X text 431 295 [set_outputs] sets correct names to every [throw~]
 in this module abstraction \, by means of indexing in an incrementing
 order \, starting from 0 it uses the 4th and 5th arguments of the module's
 abstraction (number of outlets and position of the module's abstraction
 in the matrix ([mtx_*~]'s inlet));
-#X text 273 465 modules switches can do whatever you want \, but here
+#X text 273 405 modules switches can do whatever you want \, but here
 an example of scaling and offset is provided. a 0 value will leave
 the outgoing signal unalstered (this example assumes the signal is
 an oscillator \, ranging from -1 to 1) and a value of 1 will scale
 and offset that signal placing it to a range between 0 and 1;
-#X text 273 546 open the subpatches to see the workings;
-#X connect 1 0 20 0;
-#X connect 2 0 3 0;
-#X connect 5 0 4 0;
-#X connect 6 0 14 0;
-#X connect 8 0 9 0;
-#X connect 11 0 13 0;
-#X connect 12 0 13 1;
-#X connect 13 0 2 0;
-#X connect 13 1 5 0;
-#X connect 14 0 3 0;
-#X connect 14 1 4 0;
-#X connect 20 0 23 0;
-#X connect 20 1 10 0;
-#X connect 23 0 11 0;
-#X connect 23 1 12 0;
-#X connect 24 0 25 0;
-#X connect 25 0 26 0;
-#X connect 26 0 2 1;
-#X connect 26 1 5 1;
+#X text 273 486 open the subpatches to see the workings;
+#X text 258 133 <- open this patch;
+#X connect 1 0 2 0;
+#X connect 4 0 3 0;
+#X connect 5 0 12 0;
+#X connect 7 0 8 0;
+#X connect 9 0 11 0;
+#X connect 10 0 11 1;
+#X connect 11 0 1 0;
+#X connect 11 1 4 0;
+#X connect 12 0 2 0;
+#X connect 12 1 3 0;
+#X connect 18 0 9 0;
+#X connect 18 1 10 0;
+#X connect 19 0 20 0;
+#X connect 20 0 21 0;
+#X connect 21 0 1 1;
+#X connect 21 1 4 1;
