@@ -3,7 +3,12 @@ modular_synthesizer
 
 This is a work in progress. A modular synthesizer based on Pure Data, Teensy (programmed in the Arduino language) and Odroid.
 
-Updates:
+8th of January 2015:
+Having the synth patched before booting doesn't seem to work as expected, have to impove it.
+Additive synthesis with many instances of one oscillator works, but looks like a lot of work for the Odroid as I was getting drop outs. Have to check the CPU with top...
+Changed a few things in pow_sine~.pd as well so I could test the multi-instance feature. pow_sine~.pd won't work as a normal oscillator with the current update. Had to do that cause I need more modules (scaling and offset modules) to be able to use normal oscillators to control the frequency and amplitude of a multi-instance oscillator.
+
+Older updates:
 I've changed the Arduino sketch and the Pd patch and now only the active modules have their potentiometers read and transferred to Pd.
 This means that there is a different approach to patching modules in Pd. All module abstractions (pow_sine~.pd, adc_dac~.pd, var_shapes~.pd, and template_module~.pd) have been updated in this repository. Some generic abstractions have changed slighty and they have also been updated.
 Also, you can have your synth patched and Pd will receive all the connections from the Teensy on load, whether the patching update is on or off.
