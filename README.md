@@ -3,6 +3,9 @@ modular_synthesizer
 
 This is a work in progress. A modular synthesizer based on Pure Data, Teensy (programmed in the Arduino language) and Odroid.
 
+12th of January 2015:
+Checked CPU with top and Xorg is getting most of it, so additive synthesis with many instances of one oscillator, without the GUI, will probably work. Connecting two pins of an output shift register, to one pin of an input shift register (with diodes) acts a bit strangely, the second connection doesn't go through the first time...
+
 8th of January 2015:
 Having the synth patched before booting doesn't seem to work as expected, have to impove it.
 Additive synthesis with many instances of one oscillator works, but looks like a lot of work for the Odroid as I was getting drop outs. Have to check the CPU with top...
