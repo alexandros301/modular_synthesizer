@@ -11,7 +11,7 @@
 const byte output_latch = 10;
 // byte array to transfer data to output chips via SPI
 byte output_data[NUM_OF_MODULES] = { 0 };
-// array to hold number of banana pins used of each output chip
+// array to hold number of banana pins used of each output chip, starting from 0
 byte output_pins[NUM_OF_MODULES] = {7, 3, 3};
 // array to hold the position of the first LED of each module
 // if an LED is controlled over serial, exclude it
@@ -24,10 +24,10 @@ const byte input_latch = 9;
 // array to receive data from input chips via SPI
 byte input_data[NUM_OF_MODULES];
 // array to hold position of first switch of each module, starting from 0
-// exclude switches that don't control LEDs
+// exclude switches that don't control LEDs (directly or not at all)
 byte switch_pos[NUM_OF_MODULES] = {1, 1, 3};
 // array to hold number of switches on each module
-// exclude switches that don't control LEDs
+// exclude switches that don't control LEDs (directly or not at all)
 byte num_of_switches[NUM_OF_MODULES] = {1, 1, 1};
 // two-dimensional array to hold states of banana plugs
 // row number = sum of elements of outputPins, column number = NUM_OF_MODULES
@@ -160,6 +160,16 @@ void check_switches()
         if((masked_switch & patch_update) == patch_update) patch_boolean = false;
         else patch_boolean = true;
       }
+      // this used to be in the loop function, inside a for loop then went through all modules
+      // I think it's better to be here, so that it runs only when a switch has changed
+      // control LEDs of current module
+      int pos_switch = switch_pos[i];
+      int pos_led = led_pos[i];
+      // read the switches of the current chip and set LEDs accordingly
+      for(int j = 0; j < num_of_switches[i]; j++){
+        int switch_state = bitRead(input_data[i], pos_switch++);
+        bitWrite(output_data[i], pos_led++, !switch_state);
+      }
       // update the switch_states array and the global index and exit loop
       switch_states[i] = masked_switch;
       ndx = local_index;
@@ -180,6 +190,49 @@ void init_switches()
 {
   for(int i = 0; i < NUM_OF_MODULES; i++)
     switch_states[i] = switch_pins[i];
+}
+
+// function to read potentiometers of active modules
+void read_pots(){
+  // set local index to global index's current value
+  int local_index = ndx;
+  // set row index for 2D array multiple pots
+  int row_index = 0;
+  int module_index = 0;
+  // run througn all master multiplexers
+  for(int master_mux = 0; master_mux < num_of_master_mux; master_mux++){
+    // run through all slave multiplexers
+    for(int slave_mux = 0; slave_mux < num_of_slave_mux[master_mux]; slave_mux++){
+      digitalWrite(MASTER_CONTROL0, (slave_mux&15)>>3);
+      digitalWrite(MASTER_CONTROL1, (slave_mux&7)>>2);
+      digitalWrite(MASTER_CONTROL2, (slave_mux&3)>>1);
+      digitalWrite(MASTER_CONTROL3, (slave_mux&1));
+      // if this module is active, store its index to the transfer array
+      // activity of modules is being stored in the check_connections function
+      if(active_modules[module_index]) transfer_data[local_index++] = module_index;
+      // run through the pins used on each slave multiplexer
+      for(int pot = 0; pot < num_of_pots[master_mux][slave_mux]; pot++){
+        if(active_modules[module_index]){ // if this module is active, read its pots
+          digitalWrite(SLAVE_CONTROL0, (pot&7)>>2);
+          digitalWrite(SLAVE_CONTROL1, (pot&3)>>1);
+          digitalWrite(SLAVE_CONTROL2, (pot&1));
+          // smooth out the analog reading
+          sums[row_index] -= multiple_pots[row_index][tail];
+          sums[row_index] += multiple_pots[row_index][tail] = analogRead(master_mux);
+          unsigned int smoothed = sums[row_index] / SMOOTH;
+          // and store the smoothed value to the transfer_data array
+          transfer_data[local_index++] = smoothed & 0x007f;
+          transfer_data[local_index++] = (smoothed >> 7) & 0x003f;
+        }
+        row_index++; // update the 2D array row index anyway
+      }
+      module_index++;
+    }
+  }
+  tail++;
+  if(tail >= SMOOTH) tail = 0;
+  
+  ndx = local_index;
 }
 
 
@@ -226,30 +279,34 @@ void loop()
   transfer_data[0] = 0xc0; // denote start of data stream
   ndx = 1;
   
-  // store DSP state input from Pd
+  // control LEDs from Pd
   if(Serial.available()){
-    byte inByte = Serial.read();
-    if((inByte >= '0') && (inByte <= '9')) serial_value = inByte - '0';
+    static int serial_val;
+    byte in_byte = Serial.read();
+    byte module;
+    byte module_bit;
+    byte bit_val;
+    if((in_byte >= '0') && (in_byte <= '9'))
+      serial_val = serial_val * 10 + in_byte - '0';
     else{
-      if(inByte == 'd'){
-        DSPstate = serial_value;
-        bitWrite(output_data[dac_module], 3, DSPstate);
+      if(in_byte == 'm') 
+      {
+        module = serial_val;
+        serial_val = 0;
       }
-      else if(inByte == 'i'){
+      else if(in_byte == 'b'){
+        module_bit = serial_val;
+        serial_val = 0;
+      }
+      else if(in_byte == 'v'){
+        bit_val = serial_val;
+        bitWrite(output_data[module], module_bit, bit_val);
+        serial_val = 0;
+      }
+      else if(in_byte == 'r'){
         init_connections();
         init_switches();
       }
-    }
-  }
-  
-  // set all LEDs according to switches
-  for(int i = 0; i < NUM_OF_MODULES; i++){  
-    int pos_switch = switch_pos[i];
-    int pos_led = led_pos[i];
-    // read the switches of the current chip and set LEDs accordingly
-    for(int j = 0; j < num_of_switches[i]; j++){
-      int switch_state = bitRead(input_data[i], pos_switch++);
-      bitWrite(output_data[i], pos_led++, !switch_state);
     }
   }
   
@@ -272,6 +329,8 @@ void loop()
       // give some time to the shift registers to do their job
       delayMicroseconds(1);
       refresh_input();
+      // give some time to the shift registers to do their job
+      delayMicroseconds(1);
       // add current and previous pins of current chip
       local_pin += j;
       check_connections(local_pin, i);
@@ -287,44 +346,8 @@ void loop()
   
   check_switches();
   
-  // set local index to global index's current value
-  int local_index = ndx;
-  // set row index for 2D array multiple pots
-  int row_index = 0;
-  int module_index = 0;
-  // run througn all master multiplexers
-  for(int master_mux = 0; master_mux < num_of_master_mux; master_mux++){
-    // run through all slave multiplexers
-    for(int slave_mux = 0; slave_mux < num_of_slave_mux[master_mux]; slave_mux++){
-      digitalWrite(MASTER_CONTROL0, (slave_mux&15)>>3);
-      digitalWrite(MASTER_CONTROL1, (slave_mux&7)>>2);
-      digitalWrite(MASTER_CONTROL2, (slave_mux&3)>>1);
-      digitalWrite(MASTER_CONTROL3, (slave_mux&1));
-      // if this module is active, store its index to the transfer array
-      if(active_modules[module_index]) transfer_data[local_index++] = module_index;
-      // run through the pins used on each slave multiplexer
-      for(int pot = 0; pot < num_of_pots[master_mux][slave_mux]; pot++){
-        if(active_modules[module_index]){ // if this module is active, read its pots
-          digitalWrite(SLAVE_CONTROL0, (pot&7)>>2);
-          digitalWrite(SLAVE_CONTROL1, (pot&3)>>1);
-          digitalWrite(SLAVE_CONTROL2, (pot&1));
-          // smooth out the analog reading
-          sums[row_index] -= multiple_pots[row_index][tail];
-          sums[row_index] += multiple_pots[row_index][tail] = analogRead(master_mux);
-          unsigned int smoothed = sums[row_index] / SMOOTH;
-          // and store the smoothed value to the transfer_data array
-          transfer_data[local_index++] = smoothed & 0x007f;
-          transfer_data[local_index++] = (smoothed >> 7) & 0x003f;
-        }
-        row_index++; // update the 2D array row index anyway
-      }
-      module_index++;
-    }
-  }
-  tail++;
-  if(tail >= SMOOTH) tail = 0;
+  read_pots();
   
-  // write all data to the serial port
-  int current_data = local_index; // set amount of data to transfer
-  Serial.write(transfer_data, current_data);
+  // write data to the serial port, if there is any activity
+  if(ndx > 1) Serial.write(transfer_data, ndx);
 }
