@@ -43,10 +43,6 @@ boolean patch_boolean = false;
 const byte connection_index = NUM_OF_MODULES;
 const byte switch_index = connection_index + 1;
 
-// variable to receive data from the serial port
-byte serial_value;
-byte DSPstate = 0;
-
 // set global variables for multiplexers
 // master multiplexers controlling the multiplexers of each module
 const byte num_of_master_mux = 1;
@@ -283,9 +279,9 @@ void loop()
   if(Serial.available()){
     static int serial_val;
     byte in_byte = Serial.read();
-    byte module;
-    byte module_bit;
-    byte bit_val;
+    int module;
+    int module_bit;
+    int bit_val;
     if((in_byte >= '0') && (in_byte <= '9'))
       serial_val = serial_val * 10 + in_byte - '0';
     else{
