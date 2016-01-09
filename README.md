@@ -1,6 +1,8 @@
 modular_synthesizer
 ===================
 
+This project is now deprecated. Quite a few things have changed and I've changed the repository of the project and added a GPL v3 licence. To follow up check the new repository.
+
 This is a work in progress. A modular synthesizer based on Pure Data, Teensy (programmed in the Arduino language) and Odroid.
 
 12th of January 2015:
